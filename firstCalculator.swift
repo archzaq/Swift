@@ -141,6 +141,14 @@ func main() {
                 print("\tDivision")
                 print()
                 if let (lhs, rhs) = grabNumbers(total) {
+                    guard rhs != 0 else {
+                        print()
+                        print("Error: Cannot divide by 0. You know this, m8.")
+                        if total != 0 {
+                            print("Current Total:", total)
+                        }
+                        continue
+                    }
                     let quotent = division(lhs, rhs)
                     if total != 0 {
                         total /= rhs
@@ -156,9 +164,13 @@ func main() {
                 print("Total cleared")
                 total = 0.0
             } else if quitSet.contains(selection) {
-                print()
-                print("Ending Total:", total)
-                print()
+                if total != 0 {
+                    print()
+                    print("Ending Total:", total)
+                    print()
+                } else {
+                    print("See ya!")
+                }
                 run = false
             } else {
                 print()
