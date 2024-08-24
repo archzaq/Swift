@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  stitchCounter
 //
-//  Created by zaq on 8/20/24.
+//  Created by Zaq on 8/20/24.
 //
 
 import SwiftUI
@@ -14,6 +14,9 @@ struct ContentView: View {
     @State private var selectedVariableNumber: Int = 1
     @State private var rowCount: Int = 0
     @State private var rows: [[Int]] = []
+    @State private var firstRowAdded: Bool = false
+    @State private var optionsOpened: Bool = false
+    @State private var showAlert: Bool = false
 
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
@@ -121,10 +124,13 @@ struct ContentView: View {
                 .frame(height: 30)
 
             VStack (spacing: 0) {
-                // New Row and Options buttons
+                // New Row and Options
                 HStack (spacing: 5) {
                     Button {
                         addNewRow()
+                        withAnimation {
+                            firstRowAdded = true
+                        }
                     } label: {
                         Text("New Row")
                             .font(.headline)
@@ -136,8 +142,7 @@ struct ContentView: View {
                     }
 
                     Button {
-                        // Action for Options button
-                        // WIP
+                        optionsOpened = true
                     } label: {
                         Text("Options")
                             .font(.headline)
@@ -147,10 +152,37 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
+                    .confirmationDialog("Options", isPresented: $optionsOpened) {
+                        Button ("Remove Row") {
+                            if !rows.isEmpty {
+                                rows.removeLast()
+                                if rows.isEmpty {
+                                    firstRowAdded = false
+                                }
+                            } else {
+                                firstRowAdded = false
+                            }
+                            if rowCount > 0 {
+                                rowCount -= 1
+                            }
+                        }
+                        Button ("Reset All Rows", role: .destructive) {
+                            firstRowAdded = false
+                            rows.removeAll()
+                            rowCount = 0
+                            variableNumber = 1
+                            selectedVariableNumber = 1
+                            stitchCount = 0
+                        }
+                        Button ("Cancel", role: .cancel) {}
+                    }
                 }
                 .padding([.top, .bottom], 10)
 
-                // Row tracker
+            }
+
+            if firstRowAdded {
+                // Row and stitches header
                 HStack {
                     Text("Row")
                         .font(.headline)
@@ -163,29 +195,38 @@ struct ContentView: View {
                 .background(Color.gray.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            }
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(rows.indices, id: \.self) { index in
+                                Text("\(rows[index][0])")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .id(index)
+                                    .padding()
 
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(rows.indices, id: \.self) { index in
-                        Text("\(rows[index][0])")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
-
-                        Text("\(rows[index][1])")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
+                                Text("\(rows[index][1])")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding()
+                            }
+                        }
+                        .onChange(of: rows) {
+                            // Scroll to the bottom when rows change
+                            if let lastIndex = rows.indices.last {
+                                withAnimation {
+                                    proxy.scrollTo(lastIndex, anchor: .bottom)
+                                }
+                            }
+                        }
                     }
                 }
+                .frame(maxHeight: 140)
             }
-            .frame(maxHeight: 160)
         }
     }
 
     private func addNewRow() {
-        // Create a new row with default integer values
         let newRow = [rowCount + 1, stitchCount]
         rows.append(newRow)
         rowCount += 1
