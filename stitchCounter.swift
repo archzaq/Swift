@@ -15,8 +15,17 @@ struct ContentView: View {
     @State private var rowCount: Int = 0
     @State private var rows: [[Int]] = []
     @State private var firstRowAdded: Bool = false
+    @State private var hideRows: Bool = false
     @State private var optionsOpened: Bool = false
     @State private var showAlert: Bool = false
+    @State private var showHeaderText: Bool = false
+    @State private var showRowText: Bool = false
+    @State private var lastIndex: Int?
+
+    var showBottomRow: [String] {[
+        rows.description,
+        showRowText.description
+    ]}
 
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
@@ -32,11 +41,12 @@ struct ContentView: View {
                     }
                 } label: {
                     Image(systemName: "minus")
-                        .frame(width: 50, height: 50)
+                        .frame(width: 70, height: 70)
                 }
                     .buttonStyle(.bordered)
+                    .tint(.red)
                     .controlSize(.extraLarge)
-                    .padding(.leading, 40)
+                    .padding(.leading, 20)
 
                 Spacer()
                 
@@ -44,15 +54,17 @@ struct ContentView: View {
                     stitchCount += variableNumber
                 } label: {
                     Image(systemName: "plus")
-                        .frame(width: 50, height: 50)
+                        .frame(width: 70, height: 70)
                 }
                     .buttonStyle(.bordered)
+                    .tint(.green)
                     .controlSize(.extraLarge)
-                    .padding(.trailing, 40)
+                    .padding(.trailing, 20)
             }
 
             Spacer()
 
+            // Main text/count
             Text("Stitch Count")
                 .padding([.top,.bottom], 10)
                 .font(.largeTitle)
@@ -120,11 +132,8 @@ struct ContentView: View {
                     .controlSize(.extraLarge)
             }
 
-//            Spacer()
-//                .frame(height: 30)
-
             VStack (spacing: 0) {
-                // New Row and Options
+                // New Row and Options buttons
                 HStack (spacing: 5) {
                     Button {
                         addNewRow()
@@ -140,6 +149,7 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
+                    .padding(.leading, 5)
 
                     Button {
                         optionsOpened = true
@@ -152,12 +162,29 @@ struct ContentView: View {
                             .foregroundColor(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
+                    .padding(.trailing, 5)
                     .confirmationDialog("Options", isPresented: $optionsOpened) {
+                        Button ("Show Rows") {
+                            withAnimation {
+                                hideRows = false
+                            }
+                        }
+                        Button ("Hide Rows") {
+                            hideRows = true
+                            showHeaderText = false
+                            showRowText = false
+                        }
                         Button ("Remove Row") {
                             if !rows.isEmpty {
                                 rows.removeLast()
                                 if rows.isEmpty {
                                     firstRowAdded = false
+                                    showHeaderText = false
+                                    showRowText = false
+                                } else {
+                                    withAnimation {
+                                        hideRows = false
+                                    }
                                 }
                             } else {
                                 firstRowAdded = false
@@ -168,6 +195,9 @@ struct ContentView: View {
                         }
                         Button ("Reset All Rows", role: .destructive) {
                             firstRowAdded = false
+                            showHeaderText = false
+                            showRowText = false
+                            hideRows = false
                             rows.removeAll()
                             rowCount = 0
                             variableNumber = 1
@@ -179,49 +209,81 @@ struct ContentView: View {
                 }
                 .padding([.top, .bottom], 10)
 
-            }
 
-            if firstRowAdded {
-                // Row and stitches header
-                HStack {
-                    Text("Row")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    Text("Stitches")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .padding([.top, .bottom])
-                .background(Color.gray.opacity(0.2))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(rows.indices, id: \.self) { index in
-                                Text("\(rows[index][0])")
+                // Show the bottom section if the rows are not hidden and there is an existing
+                if !hideRows {
+                    if firstRowAdded {
+                        // Row and Stitches header
+                        HStack {
+                            if showHeaderText {
+                                Text("Row")
                                     .font(.headline)
                                     .frame(maxWidth: .infinity, alignment: .center)
-                                    .id(index)
-                                    .padding()
-
-                                Text("\(rows[index][1])")
+                                    .transition(.opacity)
+                                    .animation(.easeIn(duration: 0.1), value: showHeaderText)
+                                Text("Stitches")
                                     .font(.headline)
                                     .frame(maxWidth: .infinity, alignment: .center)
-                                    .padding()
+                                    .transition(.opacity)
+                                    .animation(.easeIn(duration: 0.1), value: showHeaderText)
                             }
                         }
-                        .onChange(of: rows) {
-                            // Scroll to the bottom when rows change
-                            if let lastIndex = rows.indices.last {
+                        .padding([.top, .bottom])
+                        .background(Color.gray.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .onAppear {
+                            // Delay the start of the text animation
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 withAnimation {
-                                    proxy.scrollTo(lastIndex, anchor: .bottom)
+                                    showHeaderText = true
+                                }
+                            }
+                        }
+
+                        // Stitch tracker
+                        withAnimation {
+                            ScrollViewReader { proxy in
+                                ScrollView {
+                                    LazyVGrid(columns: columns, spacing: 10) {
+                                        ForEach(rows.indices, id: \.self) { index in
+                                            Text("\(rows[index][0])")
+                                                .font(.headline)
+                                                .frame(maxWidth: .infinity, alignment: .center)
+                                                .id(index)
+                                                .padding()
+                                                .opacity(showRowText ? 1 : 0)
+                                                .animation(.easeIn(duration: 0.2), value: showRowText)
+
+                                            Text("\(rows[index][1])")
+                                                .font(.headline)
+                                                .frame(maxWidth: .infinity, alignment: .center)
+                                                .padding()
+                                                .opacity(showRowText ? 1 : 0)
+                                                .animation(.easeIn(duration: 0.2), value: showRowText)
+                                        }
+                                    }
+                                    .onChange(of: showBottomRow) {
+                                        // Scroll to the bottom when rows change
+                                        if let lastIndex = rows.indices.last {
+                                            withAnimation {
+                                                proxy.scrollTo(lastIndex, anchor: .bottom)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 177)
+                            .onAppear {
+                                // Trigger grid text animation after the view appears
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                    withAnimation {
+                                        showRowText = true
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                .frame(maxHeight: 178)
             }
         }
     }
@@ -231,7 +293,7 @@ struct ContentView: View {
         rows.append(newRow)
         rowCount += 1
 
-        // Reset the view
+        // Reset the view after new row
         variableNumber = 1
         selectedVariableNumber = 1
         stitchCount = 0
