@@ -120,8 +120,8 @@ struct ContentView: View {
                     .controlSize(.extraLarge)
             }
 
-            Spacer()
-                .frame(height: 30)
+//            Spacer()
+//                .frame(height: 30)
 
             VStack (spacing: 0) {
                 // New Row and Options
@@ -221,7 +221,7 @@ struct ContentView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 140)
+                .frame(maxHeight: 178)
             }
         }
     }
